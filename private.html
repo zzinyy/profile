@@ -69,7 +69,7 @@
       if (!optRes.ok) throw new Error(options.error);
 
       const nickname = prompt("이 패스키의 이름을 지어주세요 (예: 내 노트북)") || "패스키";
-      const attResp = await startRegistration({ optionsJSON: options });
+      const attResp = await startRegistration(options);
 
       const verifyRes = await fetch(`${API_BASE}/api/register/verify`, {
         method: "POST",
@@ -97,7 +97,7 @@
       const { loginToken, ...options } = await optRes.json();
       if (!optRes.ok) throw new Error(options.error);
 
-      const authResp = await startAuthentication({ optionsJSON: options });
+      const authResp = await startAuthentication(options);
 
       const verifyRes = await fetch(`${API_BASE}/api/login/verify`, {
         method: "POST",
