@@ -4,10 +4,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
 <title>나만의 자리 (패스키로 잠김)</title>
 
 <!-- SimpleWebAuthn Browser -->
-<script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+<script src="https://unpkg.com/@simplewebauthn/browser@14.0.0/dist/bundle/index.umd.min.js"></script>
 
 <style>
   body {
@@ -87,223 +88,205 @@
 
 <body>
 
-  <a class="back" href="./index.html">&larr; 공개 소개 페이지로</a>
+<a class="back" href="./index.html">
+  &larr; 공개 소개 페이지로
+</a>
 
-  <h1>나만의 자리</h1>
+<h1>나만의 자리</h1>
 
-  <p>
-    이 자리는 패스키(생체인증/기기 인증)로만 열립니다.
-    비밀번호는 사용하지 않습니다.
-  </p>
-
-  <!-- 로그인 전 -->
-  <section id="auth-area">
-
-    <input
-      id="username"
-      placeholder="아이디 (예: zzinyy)"
-    />
-
-    <div>
-      <button onclick="register()">패스키 등록</button>
-      <button class="secondary" onclick="login()">
-        패스키로 로그인
-      </button>
-    </div>
-
-    <div id="status"></div>
-
-  </section>
+<p>
+  이 자리는 패스키(생체인증/기기 인증)로만 열립니다.
+  비밀번호는 사용하지 않습니다.
+</p>
 
 
-  <!-- 로그인 후 -->
-  <section id="private-area">
+<!-- ============================= -->
+<!-- 로그인 전 -->
+<!-- ============================= -->
 
-    <p>
-      로그인됨:
-      <b id="who"></b>
+<section id="auth-area">
 
-      <button class="secondary" onclick="logout()">
-        로그아웃
-      </button>
-    </p>
+  <input
+    id="username"
+    placeholder="아이디 (예: zzinyy)"
+  />
 
-    <h3>비공개 항목</h3>
+  <div>
 
-    <div id="items"></div>
-
-    <h3>내 패스키 목록</h3>
-
-    <div id="passkeys"></div>
-
-    <button class="secondary" onclick="register()">
-      패스키 추가 등록
+    <button onclick="register()">
+      패스키 등록
     </button>
 
-  </section>
+    <button
+      class="secondary"
+      onclick="login()"
+    >
+      패스키로 로그인
+    </button>
+
+  </div>
+
+  <div id="status"></div>
+
+</section>
+
+
+<!-- ============================= -->
+<!-- 로그인 후 -->
+<!-- ============================= -->
+
+<section id="private-area">
+
+  <p>
+
+    로그인됨:
+    <b id="who"></b>
+
+    <button
+      class="secondary"
+      onclick="logout()"
+    >
+      로그아웃
+    </button>
+
+  </p>
+
+
+  <h3>비공개 항목</h3>
+
+  <div id="items"></div>
+
+
+  <h3>내 패스키 목록</h3>
+
+  <div id="passkeys"></div>
+
+
+  <button
+    class="secondary"
+    onclick="register()"
+  >
+    패스키 추가 등록
+  </button>
+
+</section>
 
 
 <script>
 
-  // ============================================================
-  // 백엔드 주소
-  // ============================================================
+/* ============================================================
+   1. 백엔드 주소
+   ============================================================ */
 
-  const API_BASE =
-    "https://passkey-backend-pe26.onrender.com";
-
-
-  // ============================================================
-  // SimpleWebAuthn Browser
-  // ============================================================
-
-  const {
-    startRegistration,
-    startAuthentication
-  } = SimpleWebAuthnBrowser;
+const API_BASE =
+  "https://passkey-backend-pe26.onrender.com";
 
 
-  // ============================================================
-  // 상태 메시지
-  // ============================================================
+/* ============================================================
+   2. SimpleWebAuthn 확인
+   ============================================================ */
 
-  function log(msg) {
-    document.getElementById("status").textContent = msg;
+if (
+  typeof SimpleWebAuthnBrowser === "undefined"
+) {
+
+  document.getElementById("status").textContent =
+    "패스키 라이브러리를 불러오지 못했습니다. 페이지를 새로고침하세요.";
+
+  console.error(
+    "SimpleWebAuthnBrowser가 로드되지 않았습니다."
+  );
+
+} else {
+
+  console.log(
+    "SimpleWebAuthnBrowser 로드 성공",
+    SimpleWebAuthnBrowser
+  );
+
+}
+
+
+/* ============================================================
+   3. SimpleWebAuthn 함수 가져오기
+   ============================================================ */
+
+const {
+  startRegistration,
+  startAuthentication
+} = SimpleWebAuthnBrowser;
+
+
+/* ============================================================
+   4. 상태 메시지
+   ============================================================ */
+
+function log(msg) {
+
+  document.getElementById(
+    "status"
+  ).textContent = msg;
+
+}
+
+
+/* ============================================================
+   5. 인증 헤더
+   ============================================================ */
+
+function authHeaders() {
+
+  const token =
+    localStorage.getItem(
+      "sessionToken"
+    );
+
+  return token
+    ? {
+        Authorization:
+          "Bearer " + token
+      }
+    : {};
+
+}
+
+
+/* ============================================================
+   6. 패스키 등록
+   ============================================================ */
+
+async function register() {
+
+  const username =
+    document
+      .getElementById("username")
+      .value
+      .trim();
+
+
+  if (!username) {
+
+    return log(
+      "아이디를 입력하세요."
+    );
+
   }
 
 
-  // ============================================================
-  // 인증 헤더
-  // ============================================================
+  try {
 
-  function authHeaders() {
-
-    const token =
-      localStorage.getItem("sessionToken");
-
-    return token
-      ? {
-          Authorization: "Bearer " + token
-        }
-      : {};
-  }
+    log(
+      "등록 정보를 준비하는 중..."
+    );
 
 
-  // ============================================================
-  // 패스키 등록
-  // ============================================================
+    /* 서버에 등록 옵션 요청 */
 
-  async function register() {
-
-    const username =
-      document.getElementById("username")
-        .value
-        .trim();
-
-    if (!username) {
-      return log("아이디를 입력하세요.");
-    }
-
-    try {
-
-      // 1. 서버에서 등록 옵션 받기
-      const optRes = await fetch(
+    const optRes =
+      await fetch(
         `${API_BASE}/api/register/options`,
         {
           method: "POST",
 
-          headers: {
-            "Content-Type": "application/json"
-          },
-
-          body: JSON.stringify({
-            username
-          })
-        }
-      );
-
-
-      const {
-        regToken,
-        ...options
-      } = await optRes.json();
-
-
-      if (!optRes.ok) {
-        throw new Error(
-          options.error || "등록 옵션 생성 실패"
-        );
-      }
-
-
-      // 2. 패스키 이름 입력
-      const nickname =
-        prompt(
-          "이 패스키의 이름을 지어주세요 (예: 내 노트북)"
-        ) || "패스키";
-
-
-      // 3. 브라우저에서 패스키 생성
-      const attResp =
-        await startRegistration({
-          optionsJSON: options
-        });
-
-
-      // 4. 서버에 패스키 등록 결과 전달
-      const verifyRes = await fetch(
-        `${API_BASE}/api/register/verify`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json"
-          },
-
-          body: JSON.stringify({
-            attResp,
-            nickname,
-            regToken
-          })
-        }
-      );
-
-
-      const result =
-        await verifyRes.json();
-
-
-      if (
-        !verifyRes.ok ||
-        !result.verified
-      ) {
-        throw new Error(
-          result.error || "등록 실패"
-        );
-      }
-
-
-      log(
-        "등록 완료! 이제 '패스키로 로그인'을 눌러보세요."
-      );
-
-    } catch (e) {
-
-      console.error(e);
-
-      if (e.name === "NotAllowedError") {
-
-        log("등록이 취소되었습니다.");
-
-      } else {
-
-        log("오류: " + e.message);
-      }
-    }
-  }
-
-
-  // ============================================================
-  // 패스키 로그인
-  // ==========
+          header
 ```
