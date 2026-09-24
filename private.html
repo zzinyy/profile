@@ -43,7 +43,7 @@
   </section>
 
 <script>
-  // 배포 후 실제 백엔드 주소로 바꾸세요.
+  // 배포 후 실제 백엔드 주소로 바꾸세요. (끝에 슬래시 넣지 마세요)
   const API_BASE = "https://passkey-backend-pe26.onrender.com";
   const { startRegistration, startAuthentication } = SimpleWebAuthnBrowser;
 
@@ -51,25 +51,30 @@
     document.getElementById("status").textContent = msg;
   }
 
+  function authHeaders() {
+    const token = localStorage.getItem("sessionToken");
+    return token ? { Authorization: "Bearer " + token } : {};
+  }
+
   async function register() {
     const username = document.getElementById("username").value.trim();
     if (!username) return log("아이디를 입력하세요.");
     try {
       const optRes = await fetch(`${API_BASE}/api/register/options`, {
-        method: "POST", credentials: "include",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),
       });
-      const options = await optRes.json();
+      const { regToken, ...options } = await optRes.json();
       if (!optRes.ok) throw new Error(options.error);
 
       const nickname = prompt("이 패스키의 이름을 지어주세요 (예: 내 노트북)") || "패스키";
       const attResp = await startRegistration({ optionsJSON: options });
 
       const verifyRes = await fetch(`${API_BASE}/api/register/verify`, {
-        method: "POST", credentials: "include",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attResp, nickname }),
+        body: JSON.stringify({ attResp, nickname, regToken }),
       });
       const result = await verifyRes.json();
       if (!verifyRes.ok || !result.verified) throw new Error(result.error || "등록 실패");
@@ -85,22 +90,23 @@
     if (!username) return log("아이디를 입력하세요.");
     try {
       const optRes = await fetch(`${API_BASE}/api/login/options`, {
-        method: "POST", credentials: "include",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),
       });
-      const options = await optRes.json();
+      const { loginToken, ...options } = await optRes.json();
       if (!optRes.ok) throw new Error(options.error);
 
       const authResp = await startAuthentication({ optionsJSON: options });
 
       const verifyRes = await fetch(`${API_BASE}/api/login/verify`, {
-        method: "POST", credentials: "include",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authResp }),
+        body: JSON.stringify({ authResp, loginToken }),
       });
       const result = await verifyRes.json();
       if (!verifyRes.ok || !result.verified) throw new Error(result.error || "로그인 실패");
+      localStorage.setItem("sessionToken", result.sessionToken);
       log("로그인 성공");
       await loadPrivate();
     } catch (e) {
@@ -110,14 +116,15 @@
   }
 
   async function logout() {
-    await fetch(`${API_BASE}/api/logout`, { method: "POST", credentials: "include" });
+    await fetch(`${API_BASE}/api/logout`, { method: "POST", headers: authHeaders() });
+    localStorage.removeItem("sessionToken");
     document.getElementById("private-area").style.display = "none";
     document.getElementById("auth-area").style.display = "block";
     log("로그아웃되었습니다.");
   }
 
   async function loadPrivate() {
-    const res = await fetch(`${API_BASE}/api/private`, { credentials: "include" });
+    const res = await fetch(`${API_BASE}/api/private`, { headers: authHeaders() });
     if (!res.ok) return;
     const data = await res.json();
     document.getElementById("who").textContent = data.username;
@@ -130,7 +137,7 @@
   }
 
   async function loadPasskeys() {
-    const res = await fetch(`${API_BASE}/api/passkeys`, { credentials: "include" });
+    const res = await fetch(`${API_BASE}/api/passkeys`, { headers: authHeaders() });
     const list = await res.json();
     document.getElementById("passkeys").innerHTML = list
       .map(
@@ -143,18 +150,21 @@
 
   async function removePasskey(id) {
     const res = await fetch(`${API_BASE}/api/passkeys/${encodeURIComponent(id)}`, {
-      method: "DELETE", credentials: "include",
+      method: "DELETE",
+      headers: authHeaders(),
     });
     const result = await res.json();
     if (result.warning) log(result.warning);
     await loadPasskeys();
   }
 
-  // 페이지 로드 시 이미 로그인되어 있는지 확인
+  // 페이지 로드 시 이미 로그인되어 있는지 확인 (localStorage에 토큰이 남아있으면)
   (async () => {
-    const res = await fetch(`${API_BASE}/api/me`, { credentials: "include" });
+    if (!localStorage.getItem("sessionToken")) return;
+    const res = await fetch(`${API_BASE}/api/me`, { headers: authHeaders() });
     const data = await res.json();
     if (data.loggedIn) await loadPrivate();
+    else localStorage.removeItem("sessionToken");
   })();
 </script>
 </body>
