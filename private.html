@@ -1,171 +1,309 @@
+```html
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나만의 자리 (패스키로 잠김)</title>
-<script src="https://unpkg.com/@simplewebauthn/browser@10.0.1/dist/bundle/index.umd.min.js"></script>
+
+<!-- SimpleWebAuthn Browser -->
+<script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px; color: #222; }
-  a.back { display:inline-block; margin-bottom: 20px; color:#555; text-decoration:none; }
-  h1 { font-size: 1.4rem; }
-  section { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-  input { padding: 8px; border:1px solid #ccc; border-radius:6px; width: 100%; box-sizing:border-box; margin-bottom:8px; }
-  button { padding: 8px 14px; border-radius: 6px; border: 1px solid #333; background:#111; color:#fff; cursor:pointer; margin-right:6px; }
-  button.secondary { background:#fff; color:#111; }
-  #status { font-size: 0.9rem; color:#666; white-space: pre-wrap; }
-  .item { border-bottom: 1px solid #eee; padding: 8px 0; }
-  .passkey-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; }
-  #private-area { display:none; }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 560px;
+    margin: 40px auto;
+    padding: 0 16px;
+    color: #222;
+  }
+
+  a.back {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #555;
+    text-decoration: none;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+  }
+
+  section {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+  }
+
+  button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: #111;
+    color: #fff;
+    cursor: pointer;
+    margin-right: 6px;
+  }
+
+  button.secondary {
+    background: #fff;
+    color: #111;
+  }
+
+  #status {
+    font-size: 0.9rem;
+    color: #666;
+    white-space: pre-wrap;
+    margin-top: 10px;
+  }
+
+  .item {
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+  }
+
+  .passkey-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+  }
+
+  #private-area {
+    display: none;
+  }
 </style>
 </head>
-<body>
-  <a class="back" href="./index.html">&larr; 공개 소개 페이지로</a>
-  <h1>나만의 자리</h1>
-  <p>이 자리는 패스키(생체인증/기기 인증)로만 열립니다. 비밀번호는 사용하지 않습니다.</p>
 
+<body>
+
+  <a class="back" href="./index.html">&larr; 공개 소개 페이지로</a>
+
+  <h1>나만의 자리</h1>
+
+  <p>
+    이 자리는 패스키(생체인증/기기 인증)로만 열립니다.
+    비밀번호는 사용하지 않습니다.
+  </p>
+
+  <!-- 로그인 전 -->
   <section id="auth-area">
-    <input id="username" placeholder="아이디 (예: zzinyy)" />
+
+    <input
+      id="username"
+      placeholder="아이디 (예: zzinyy)"
+    />
+
     <div>
       <button onclick="register()">패스키 등록</button>
-      <button class="secondary" onclick="login()">패스키로 로그인</button>
+      <button class="secondary" onclick="login()">
+        패스키로 로그인
+      </button>
     </div>
+
     <div id="status"></div>
+
   </section>
 
+
+  <!-- 로그인 후 -->
   <section id="private-area">
-    <p>로그인됨: <b id="who"></b> <button class="secondary" onclick="logout()">로그아웃</button></p>
+
+    <p>
+      로그인됨:
+      <b id="who"></b>
+
+      <button class="secondary" onclick="logout()">
+        로그아웃
+      </button>
+    </p>
+
     <h3>비공개 항목</h3>
+
     <div id="items"></div>
+
     <h3>내 패스키 목록</h3>
+
     <div id="passkeys"></div>
-    <button class="secondary" onclick="register()">패스키 추가 등록</button>
+
+    <button class="secondary" onclick="register()">
+      패스키 추가 등록
+    </button>
+
   </section>
+
 
 <script>
-  // 배포 후 실제 백엔드 주소로 바꾸세요. (끝에 슬래시 넣지 마세요)
-  const API_BASE = "https://passkey-backend-pe26.onrender.com";
-  const { startRegistration, startAuthentication } = SimpleWebAuthnBrowser;
+
+  // ============================================================
+  // 백엔드 주소
+  // ============================================================
+
+  const API_BASE =
+    "https://passkey-backend-pe26.onrender.com";
+
+
+  // ============================================================
+  // SimpleWebAuthn Browser
+  // ============================================================
+
+  const {
+    startRegistration,
+    startAuthentication
+  } = SimpleWebAuthnBrowser;
+
+
+  // ============================================================
+  // 상태 메시지
+  // ============================================================
 
   function log(msg) {
     document.getElementById("status").textContent = msg;
   }
 
+
+  // ============================================================
+  // 인증 헤더
+  // ============================================================
+
   function authHeaders() {
-    const token = localStorage.getItem("sessionToken");
-    return token ? { Authorization: "Bearer " + token } : {};
+
+    const token =
+      localStorage.getItem("sessionToken");
+
+    return token
+      ? {
+          Authorization: "Bearer " + token
+        }
+      : {};
   }
+
+
+  // ============================================================
+  // 패스키 등록
+  // ============================================================
 
   async function register() {
-    const username = document.getElementById("username").value.trim();
-    if (!username) return log("아이디를 입력하세요.");
+
+    const username =
+      document.getElementById("username")
+        .value
+        .trim();
+
+    if (!username) {
+      return log("아이디를 입력하세요.");
+    }
+
     try {
-      const optRes = await fetch(`${API_BASE}/api/register/options`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
-      });
-      const { regToken, ...options } = await optRes.json();
-      if (!optRes.ok) throw new Error(options.error);
 
-      const nickname = prompt("이 패스키의 이름을 지어주세요 (예: 내 노트북)") || "패스키";
-      const attResp = await startRegistration(options);
+      // 1. 서버에서 등록 옵션 받기
+      const optRes = await fetch(
+        `${API_BASE}/api/register/options`,
+        {
+          method: "POST",
 
-      const verifyRes = await fetch(`${API_BASE}/api/register/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attResp, nickname, regToken }),
-      });
-      const result = await verifyRes.json();
-      if (!verifyRes.ok || !result.verified) throw new Error(result.error || "등록 실패");
-      log("등록 완료! 이제 '패스키로 로그인'을 눌러보세요.");
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            username
+          })
+        }
+      );
+
+
+      const {
+        regToken,
+        ...options
+      } = await optRes.json();
+
+
+      if (!optRes.ok) {
+        throw new Error(
+          options.error || "등록 옵션 생성 실패"
+        );
+      }
+
+
+      // 2. 패스키 이름 입력
+      const nickname =
+        prompt(
+          "이 패스키의 이름을 지어주세요 (예: 내 노트북)"
+        ) || "패스키";
+
+
+      // 3. 브라우저에서 패스키 생성
+      const attResp =
+        await startRegistration({
+          optionsJSON: options
+        });
+
+
+      // 4. 서버에 패스키 등록 결과 전달
+      const verifyRes = await fetch(
+        `${API_BASE}/api/register/verify`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            attResp,
+            nickname,
+            regToken
+          })
+        }
+      );
+
+
+      const result =
+        await verifyRes.json();
+
+
+      if (
+        !verifyRes.ok ||
+        !result.verified
+      ) {
+        throw new Error(
+          result.error || "등록 실패"
+        );
+      }
+
+
+      log(
+        "등록 완료! 이제 '패스키로 로그인'을 눌러보세요."
+      );
+
     } catch (e) {
-      if (e.name === "NotAllowedError") log("등록이 취소되었습니다.");
-      else log("오류: " + e.message);
+
+      console.error(e);
+
+      if (e.name === "NotAllowedError") {
+
+        log("등록이 취소되었습니다.");
+
+      } else {
+
+        log("오류: " + e.message);
+      }
     }
   }
 
-  async function login() {
-    const username = document.getElementById("username").value.trim();
-    if (!username) return log("아이디를 입력하세요.");
-    try {
-      const optRes = await fetch(`${API_BASE}/api/login/options`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
-      });
-      const { loginToken, ...options } = await optRes.json();
-      if (!optRes.ok) throw new Error(options.error);
 
-      const authResp = await startAuthentication(options);
-
-      const verifyRes = await fetch(`${API_BASE}/api/login/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authResp, loginToken }),
-      });
-      const result = await verifyRes.json();
-      if (!verifyRes.ok || !result.verified) throw new Error(result.error || "로그인 실패");
-      localStorage.setItem("sessionToken", result.sessionToken);
-      log("로그인 성공");
-      await loadPrivate();
-    } catch (e) {
-      if (e.name === "NotAllowedError") log("로그인이 취소되었습니다.");
-      else log("오류: " + e.message);
-    }
-  }
-
-  async function logout() {
-    await fetch(`${API_BASE}/api/logout`, { method: "POST", headers: authHeaders() });
-    localStorage.removeItem("sessionToken");
-    document.getElementById("private-area").style.display = "none";
-    document.getElementById("auth-area").style.display = "block";
-    log("로그아웃되었습니다.");
-  }
-
-  async function loadPrivate() {
-    const res = await fetch(`${API_BASE}/api/private`, { headers: authHeaders() });
-    if (!res.ok) return;
-    const data = await res.json();
-    document.getElementById("who").textContent = data.username;
-    document.getElementById("items").innerHTML = data.items
-      .map((it) => `<div class="item"><b>${it.title}</b><br>${it.body}</div>`)
-      .join("");
-    document.getElementById("auth-area").style.display = "none";
-    document.getElementById("private-area").style.display = "block";
-    await loadPasskeys();
-  }
-
-  async function loadPasskeys() {
-    const res = await fetch(`${API_BASE}/api/passkeys`, { headers: authHeaders() });
-    const list = await res.json();
-    document.getElementById("passkeys").innerHTML = list
-      .map(
-        (p) =>
-          `<div class="passkey-row"><span>${p.name} (${new Date(p.createdAt).toLocaleDateString()})</span>
-           <button class="secondary" onclick="removePasskey('${p.id}')">삭제</button></div>`
-      )
-      .join("");
-  }
-
-  async function removePasskey(id) {
-    const res = await fetch(`${API_BASE}/api/passkeys/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: authHeaders(),
-    });
-    const result = await res.json();
-    if (result.warning) log(result.warning);
-    await loadPasskeys();
-  }
-
-  // 페이지 로드 시 이미 로그인되어 있는지 확인 (localStorage에 토큰이 남아있으면)
-  (async () => {
-    if (!localStorage.getItem("sessionToken")) return;
-    const res = await fetch(`${API_BASE}/api/me`, { headers: authHeaders() });
-    const data = await res.json();
-    if (data.loggedIn) await loadPrivate();
-    else localStorage.removeItem("sessionToken");
-  })();
-</script>
-</body>
-</html>
+  // ============================================================
+  // 패스키 로그인
+  // ==========
+```
